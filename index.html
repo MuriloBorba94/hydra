@@ -1,0 +1,405 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hydra Finances - Metrópole HQ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #050505; color: #f3f4f6; }
+        .glass { background: rgba(17, 17, 17, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(16, 185, 129, 0.1); }
+        .hydra-gradient { background: linear-gradient(135deg, #059669 0%, #064e3b 100%); }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #064e3b; border-radius: 10px; }
+        [v-cloak] { display: none; }
+    </style>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body>
+    <div id="app" v-cloak>
+        <!-- TELA DE LOGIN -->
+        <div v-if="!currentUser" class="min-h-screen flex items-center justify-center p-4">
+            <div class="glass p-8 rounded-3xl w-full max-w-md border-emerald-500/20 shadow-2xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 hydra-gradient opacity-50"></div>
+                <div class="flex flex-col items-center mb-8">
+                    <div class="w-20 h-20 rounded-2xl hydra-gradient flex items-center justify-center mb-4 shadow-emerald-900/40 shadow-2xl">
+                        <i class="fas fa-shield-halved text-4xl text-emerald-300"></i>
+                    </div>
+                    <h1 class="text-2xl font-black uppercase tracking-tighter">Hydra <span class="text-emerald-500">Finances</span></h1>
+                    <p class="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Metrópole HQ - Gestão de Ativos</p>
+                </div>
+                <form @submit.prevent="handleLogin" class="space-y-4">
+                    <div class="relative">
+                        <i class="fas fa-user absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"></i>
+                        <input v-model="loginForm.username" type="text" placeholder="Usuário" class="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-emerald-500 transition-all text-white" required>
+                    </div>
+                    <div class="relative">
+                        <i class="fas fa-key absolute left-4 top-1/2 -translate-y-1/2 text-zinc-600"></i>
+                        <input v-model="loginForm.password" type="password" placeholder="Senha" class="w-full bg-zinc-900/50 border border-zinc-800 rounded-2xl py-4 pl-12 pr-4 outline-none focus:border-emerald-500 transition-all text-white" required>
+                    </div>
+                    <button class="w-full hydra-gradient py-4 rounded-2xl font-bold uppercase tracking-widest text-sm hover:scale-[1.02] active:scale-[0.98] transition-all text-white shadow-lg">
+                        Acessar Cofre
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div v-else class="min-h-screen p-4 md:p-8">
+            <header class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl hydra-gradient flex items-center justify-center shadow-lg border border-emerald-500/20">
+                        <i class="fas fa-shield-halved text-emerald-300 text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-2xl font-bold tracking-tight uppercase">Hydra <span class="text-emerald-500">Finances</span></h1>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[10px] text-zinc-500 uppercase font-bold">{{ currentUser.username }}</span>
+                            <span :class="['text-[8px] px-1.5 py-0.5 rounded font-black border', currentUser.role === 'LIDER' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-zinc-800 text-zinc-500 border-transparent']">
+                                {{ currentUser.role }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap justify-center items-center gap-3">
+                    <div class="glass px-4 py-2 rounded-lg flex items-center gap-2 border-emerald-500/20">
+                        <i class="fas fa-calendar-day text-emerald-500 text-sm"></i>
+                        <input type="date" v-model="selectedDate" class="bg-transparent text-sm text-zinc-300 outline-none cursor-pointer">
+                    </div>
+                    
+                    <template v-if="currentUser.role === 'LIDER'">
+                        <button @click="toggleUserMgmt" :class="['flex items-center gap-2 px-4 py-2 glass rounded-lg transition-all text-sm', showUserMgmt ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-300']">
+                            <i class="fas fa-users-cog"></i> Membros
+                        </button>
+                        <button @click="toggleSettings" :class="['flex items-center gap-2 px-4 py-2 glass rounded-lg transition-all text-sm', showSettings ? 'bg-emerald-600 text-white shadow-lg' : 'text-zinc-300']">
+                            <i class="fas fa-gears"></i> Taxas
+                        </button>
+                    </template>
+
+                    <button @click="handleLogout" class="flex items-center gap-2 px-4 py-2 glass rounded-lg text-red-500 hover:bg-red-500/10 transition-all text-sm font-bold">
+                        <i class="fas fa-power-off"></i> Sair
+                    </button>
+                </div>
+            </header>
+
+            <main class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <!-- COLUNA DE CONTROLE -->
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <!-- GESTÃO DE USUÁRIOS -->
+                    <div v-if="showUserMgmt && currentUser.role === 'LIDER'" class="glass p-6 rounded-2xl border-emerald-500/30 shadow-2xl animate-in fade-in duration-300">
+                        <h3 class="text-sm font-bold mb-4 flex items-center gap-2 uppercase text-emerald-500">
+                            <i class="fas fa-user-plus"></i> Novo Cadastro
+                        </h3>
+                        <form @submit.prevent="handleAddUser" class="space-y-3 mb-6">
+                            <input v-model="newUser.username" type="text" placeholder="Nome de Usuário" class="w-full bg-black border border-zinc-800 rounded-xl p-2 text-xs outline-none focus:border-emerald-500 text-white" required>
+                            <input v-model="newUser.password" type="password" placeholder="Definir Senha" class="w-full bg-black border border-zinc-800 rounded-xl p-2 text-xs outline-none focus:border-emerald-500 text-white" required>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" @click="newUser.role = 'GERENTE'" :class="['p-2 rounded-xl border text-[10px] font-bold transition-all', newUser.role === 'GERENTE' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500']">GERENTE</button>
+                                <button type="button" @click="newUser.role = 'LIDER'" :class="['p-2 rounded-xl border text-[10px] font-bold transition-all', newUser.role === 'LIDER' ? 'bg-emerald-600 border-emerald-500 text-white' : 'bg-zinc-900 border-zinc-800 text-zinc-500']">LÍDER</button>
+                            </div>
+                            <button class="w-full bg-emerald-600 p-2 rounded-xl hover:bg-emerald-500 transition-colors text-white font-bold text-xs">Finalizar Cadastro</button>
+                        </form>
+                        <div class="space-y-2 max-h-40 overflow-y-auto custom-scrollbar">
+                            <div v-for="user in users" :key="user.id" class="flex justify-between items-center p-2 bg-zinc-900/50 rounded-lg text-xs border border-zinc-800/50">
+                                <div><span class="font-bold text-white">{{ user.username }}</span> <span class="text-[8px] opacity-40 uppercase ml-1">{{ user.role }}</span></div>
+                                <button v-if="user.id !== 'admin-root' && user.id !== currentUser.id" @click="deleteUser(user.id)" class="text-zinc-600 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AJUSTES DE TAXAS -->
+                    <div v-if="showSettings && currentUser.role === 'LIDER'" class="glass p-6 rounded-2xl border-emerald-500/30 shadow-2xl animate-in fade-in duration-300">
+                        <h3 class="text-sm font-bold mb-4 flex items-center gap-2 uppercase text-emerald-500">
+                            <i class="fas fa-percent"></i> Configurações de Taxas
+                        </h3>
+                        <div class="space-y-4">
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Taxa Pista %</label>
+                                    <input type="number" v-model="settings.taxPista" class="w-full bg-black border border-zinc-800 rounded-lg p-2 text-sm focus:border-emerald-500 outline-none text-emerald-400 font-bold">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Taxa Produtos %</label>
+                                    <input type="number" v-model="settings.taxProdutos" class="w-full bg-black border border-zinc-800 rounded-lg p-2 text-sm focus:border-emerald-500 outline-none text-emerald-400 font-bold">
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 border-t border-zinc-800 pt-4">
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Preço Alvejante</label>
+                                    <input type="number" v-model="settings.bleachPrice" class="w-full bg-black border border-zinc-800 rounded-lg p-2 text-sm">
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Máquina %</label>
+                                    <input type="number" v-model="settings.machineTaxRate" class="w-full bg-black border border-zinc-800 rounded-lg p-2 text-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RESUMO FINANCEIRO -->
+                    <div class="space-y-4">
+                        <div class="glass p-5 rounded-2xl border-l-4 border-l-emerald-500 shadow-xl">
+                            <p class="text-zinc-500 text-[10px] uppercase font-bold tracking-wider">Lavado no Dia</p>
+                            <h2 class="text-2xl font-black mt-1 text-white">{{ formatMoney(dailyStats.dirty) }}</h2>
+                        </div>
+                        <div class="glass p-5 rounded-2xl border-l-4 border-l-emerald-400 shadow-xl">
+                            <p class="text-zinc-400 text-[10px] uppercase font-bold tracking-wider">Lucro Líquido Hydra</p>
+                            <h2 class="text-2xl font-black mt-1 text-emerald-400">{{ formatMoney(dailyStats.profit) }}</h2>
+                        </div>
+                    </div>
+
+                    <!-- FORMULÁRIO DE LAVAGEM -->
+                    <div :class="['glass p-6 rounded-2xl border shadow-2xl transition-all', editingId ? 'border-emerald-400' : 'border-emerald-500/10']">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold flex items-center gap-2 uppercase tracking-tight">
+                                <i :class="['fas', editingId ? 'fa-edit text-emerald-400' : 'fa-hand-holding-dollar text-emerald-500']"></i>
+                                {{ editingId ? 'Corrigir Lançamento' : 'Novo Lançamento' }}
+                            </h3>
+                            <button v-if="editingId" @click="cancelEdit" class="text-zinc-500 hover:text-white"><i class="fas fa-times-circle text-xl"></i></button>
+                        </div>
+                        <form @submit.prevent="saveTransaction" class="space-y-4">
+                            <div>
+                                <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Família ou Grupo</label>
+                                <input v-model="form.family" type="text" placeholder="Ex: Vagos, Ballas..." class="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 focus:border-emerald-500 outline-none text-sm text-white" required>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Valor Sujo</label>
+                                    <input v-model.number="form.dirtyAmount" type="number" placeholder="R$ 0,00" class="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 focus:border-emerald-500 outline-none text-sm text-white font-mono" required>
+                                </div>
+                                <div>
+                                    <label class="text-[10px] text-zinc-500 block mb-1 uppercase font-bold">Alvejantes</label>
+                                    <input v-model.number="form.bleachCount" type="number" :placeholder="'Sugestão: ' + bleachSuggestion" class="w-full bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 focus:border-emerald-500 outline-none text-sm text-white font-mono placeholder:text-zinc-600" required>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2">
+                                <button type="button" @click="form.category = 'Pista'" :class="['p-3 rounded-xl border text-xs font-bold transition-all', form.category === 'Pista' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-zinc-900 border-zinc-800 text-zinc-500']">PISTA ({{settings.taxPista}}%)</button>
+                                <button type="button" @click="form.category = 'Produtos'" :class="['p-3 rounded-xl border text-xs font-bold transition-all', form.category === 'Produtos' ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg' : 'bg-zinc-900 border-zinc-800 text-zinc-500']">PRODUTOS ({{settings.taxProdutos}}%)</button>
+                            </div>
+                            <button class="w-full font-bold p-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 text-white hydra-gradient hover:opacity-90 active:scale-[0.98]">
+                                {{ editingId ? 'Salvar Mudanças' : 'Confirmar Lavagem' }}
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- COLUNA DO HISTÓRICO -->
+                <div class="lg:col-span-8 space-y-4">
+                    <div class="flex items-center justify-between mb-2 px-1">
+                        <h3 class="text-xl font-bold flex items-center gap-2">
+                            <i class="fas fa-list-check text-emerald-500"></i> Movimentações de Hoje
+                        </h3>
+                        <span class="text-[10px] text-zinc-600 uppercase font-mono tracking-tighter">{{ dailyTransactions.length }} registros</span>
+                    </div>
+
+                    <div class="space-y-3 max-h-[850px] overflow-y-auto pr-2 custom-scrollbar">
+                        <div v-if="dailyTransactions.length === 0" class="glass p-20 rounded-3xl text-center border-dashed border-2 border-zinc-800">
+                            <p class="text-zinc-600 font-medium italic">O cofre está vazio para esta data.</p>
+                        </div>
+                        <div v-for="t in dailyTransactions" :key="t.id" class="glass p-5 rounded-2xl flex flex-col md:grid md:grid-cols-6 items-center gap-4 border border-transparent hover:border-emerald-500/20 transition-all group">
+                            <div class="col-span-2 w-full">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <span class="font-black text-white text-lg truncate">{{ t.family }}</span>
+                                    <span :class="['text-[8px] px-2 py-0.5 rounded font-black uppercase', t.category === 'Pista' ? 'bg-orange-900/40 text-orange-400' : 'bg-blue-900/40 text-blue-400']">
+                                        {{ t.category === 'Pista' ? 'PISTA' : 'PROD' }}
+                                    </span>
+                                </div>
+                                <div class="flex flex-col gap-0.5 text-[9px] text-zinc-500 font-mono">
+                                    <span class="text-zinc-400"><i class="fas fa-id-card-clip text-emerald-500 mr-1"></i> {{ t.createdBy }}</span>
+                                    <span class="opacity-60">{{ t.time }} • {{ t.bleachCount }} Alvejantes</span>
+                                </div>
+                            </div>
+                            <div class="w-full text-center md:text-left">
+                                <p class="text-[9px] text-zinc-600 uppercase font-bold">Valor Sujo</p>
+                                <p class="font-bold text-zinc-300 text-sm">{{ formatMoney(t.dirtyAmount) }}</p>
+                            </div>
+                            <div class="w-full text-center md:text-left">
+                                <p class="text-[9px] text-emerald-600 uppercase font-bold">Devolver</p>
+                                <p class="font-bold text-emerald-400 text-sm">{{ formatMoney(t.returnedAmount) }}</p>
+                            </div>
+                            <div class="w-full text-center md:text-left">
+                                <p class="text-[9px] text-zinc-600 uppercase font-bold">Lucro</p>
+                                <p class="font-bold text-emerald-600 text-sm">+{{ formatMoney(t.profit) }}</p>
+                            </div>
+                            <div class="w-full flex items-center justify-end gap-1">
+                                <template v-if="currentUser.role === 'LIDER'">
+                                    <button @click="editTransaction(t)" class="p-2 text-zinc-600 hover:text-emerald-400 transition-colors"><i class="fas fa-edit"></i></button>
+                                    <button @click="deleteTransaction(t.id)" class="p-2 text-zinc-600 hover:text-red-500 transition-colors"><i class="fas fa-trash-can"></i></button>
+                                </template>
+                                <i v-else class="fas fa-lock text-zinc-800 text-xs opacity-30"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+
+            <footer class="max-w-7xl mx-auto mt-12 py-8 border-t border-zinc-900 flex flex-wrap justify-center gap-10 opacity-30">
+                <div class="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase tracking-widest"><i class="fas fa-gear"></i> MÁQUINA: {{settings.machineTaxRate}}%</div>
+                <div class="flex items-center gap-2 text-zinc-500 text-[10px] font-bold uppercase tracking-widest"><i class="fas fa-droplet"></i> ALVEJANTE: {{ formatMoney(settings.bleachPrice) }}</div>
+                <div class="flex items-center gap-2 text-emerald-500 text-[10px] font-bold uppercase tracking-widest"><i class="fas fa-dragon"></i> HYDRA WEB v8.0</div>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
+
+        createApp({
+            setup() {
+                const currentUser = ref(null);
+                const users = ref([]);
+                const transactions = ref([]);
+                const settings = reactive({
+                    taxPista: 45,
+                    taxProdutos: 40,
+                    bleachPrice: 8000,
+                    machineTaxRate: 30
+                });
+
+                const loginForm = reactive({ username: '', password: '' });
+                const newUser = reactive({ username: '', password: '', role: 'GERENTE' });
+                const form = reactive({ family: '', dirtyAmount: null, bleachCount: null, category: 'Pista' });
+
+                const selectedDate = ref(new Date().toISOString().split('T')[0]);
+                const showSettings = ref(false);
+                const showUserMgmt = ref(false);
+                const editingId = ref(null);
+
+                onMounted(() => {
+                    const saved = localStorage.getItem('hydra_v8_db');
+                    if (saved) {
+                        const data = JSON.parse(saved);
+                        users.value = data.users || [];
+                        transactions.value = data.transactions || [];
+                        Object.assign(settings, data.settings);
+                    } else {
+                        // Cadastro inicial obrigatório
+                        users.value = [{ id: 'admin-root', username: 'admin', password: 'hydra123', role: 'LIDER' }];
+                    }
+
+                    const session = localStorage.getItem('hydra_session_v8');
+                    if (session) currentUser.value = JSON.parse(session);
+                });
+
+                watch([users, transactions, settings], () => {
+                    localStorage.setItem('hydra_v8_db', JSON.stringify({
+                        users: users.value,
+                        transactions: transactions.value,
+                        settings: settings
+                    }));
+                }, { deep: true });
+
+                const bleachSuggestion = computed(() => {
+                    if (!form.dirtyAmount || form.dirtyAmount <= 0) return 0;
+                    return Math.ceil((form.dirtyAmount / 1000000) * 5);
+                });
+
+                const dailyTransactions = computed(() => {
+                    return transactions.value.filter(t => {
+                        const d = new Date(t.timestamp).toISOString().split('T')[0];
+                        return d === selectedDate.value;
+                    }).sort((a,b) => b.timestamp - a.timestamp);
+                });
+
+                const dailyStats = computed(() => {
+                    return dailyTransactions.value.reduce((acc, t) => ({
+                        dirty: acc.dirty + t.dirtyAmount,
+                        profit: acc.profit + t.profit
+                    }), { dirty: 0, profit: 0 });
+                });
+
+                const handleLogin = () => {
+                    const user = users.value.find(u => 
+                        u.username.toLowerCase() === loginForm.username.toLowerCase() && 
+                        u.password === loginForm.password
+                    );
+                    if (user) {
+                        currentUser.value = user;
+                        localStorage.setItem('hydra_session_v8', JSON.stringify(user));
+                        loginForm.username = ''; loginForm.password = '';
+                    } else alert('Cofre Bloqueado: Credenciais Inválidas.');
+                };
+
+                const handleLogout = () => {
+                    currentUser.value = null;
+                    localStorage.removeItem('hydra_session_v8');
+                };
+
+                const handleAddUser = () => {
+                    if (users.value.find(u => u.username.toLowerCase() === newUser.username.toLowerCase())) {
+                        return alert('Este codinome já está em uso.');
+                    }
+                    users.value.push({ id: Date.now().toString(), ...newUser });
+                    newUser.username = ''; newUser.password = ''; newUser.role = 'GERENTE';
+                };
+
+                const deleteUser = (id) => {
+                    if (confirm('Deseja mesmo remover o acesso deste membro?')) {
+                        users.value = users.value.filter(u => u.id !== id);
+                    }
+                };
+
+                const saveTransaction = () => {
+                    const clientTax = form.category === 'Pista' ? settings.taxPista : settings.taxProdutos;
+                    const returned = form.dirtyAmount * (1 - (clientTax / 100));
+                    const machine = form.dirtyAmount * (settings.machineTaxRate / 100);
+                    const cost = form.bleachCount * settings.bleachPrice;
+                    const prof = form.dirtyAmount - returned - machine - cost;
+
+                    if (editingId.value) {
+                        const idx = transactions.value.findIndex(t => t.id === editingId.value);
+                        transactions.value[idx] = { 
+                            ...transactions.value[idx], 
+                            ...form, returnedAmount: returned, profit: prof,
+                            timestamp: Date.now() // Atualiza timestamp se desejar que suba no histórico
+                        };
+                        editingId.value = null;
+                    } else {
+                        transactions.value.push({
+                            id: Date.now().toString(),
+                            ...form,
+                            returnedAmount: returned,
+                            profit: prof,
+                            timestamp: Date.now(),
+                            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                            createdBy: currentUser.value.username
+                        });
+                    }
+                    form.family = ''; form.dirtyAmount = null; form.bleachCount = null;
+                };
+
+                const editTransaction = (t) => {
+                    editingId.value = t.id;
+                    Object.assign(form, { family: t.family, dirtyAmount: t.dirtyAmount, bleachCount: t.bleachCount, category: t.category });
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                };
+
+                const deleteTransaction = (id) => {
+                    if (confirm('Deletar permanentemente este registro do cofre?')) {
+                        transactions.value = transactions.value.filter(t => t.id !== id);
+                    }
+                };
+
+                return {
+                    currentUser, users, transactions, settings, loginForm, newUser, form,
+                    selectedDate, showSettings, showUserMgmt, editingId, bleachSuggestion,
+                    dailyTransactions, dailyStats, handleLogin, handleLogout, handleAddUser,
+                    deleteUser, saveTransaction, editTransaction, deleteTransaction,
+                    formatMoney: (v) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                    toggleUserMgmt: () => { showUserMgmt.value = !showUserMgmt.value; showSettings.value = false; },
+                    toggleSettings: () => { showSettings.value = !showSettings.value; showUserMgmt.value = false; },
+                    cancelEdit: () => { editingId.value = null; form.family = ''; form.dirtyAmount = null; form.bleachCount = null; }
+                }
+            }
+        }).mount('#app');
+    </script>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
